@@ -110,6 +110,25 @@ async function run() {
         })
 
 
+        app.get('/users', async (req, res) => {
+            const result = await usersCollection.find().toArray();
+            res.send(result)
+
+        })
+
+        app.get('/singleUser/:email', async (req, res) => {
+            const email =  req.params.email ;
+           console.log(email);
+           const query ={email:  req.params.email}
+           const result =await usersCollection.findOne(query)
+           console.log(result);
+           res.send(result)
+
+        })
+
+
+      
+
 
 
         // Send a ping to confirm a successful connection
