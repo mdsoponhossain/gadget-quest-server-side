@@ -31,20 +31,83 @@ async function run() {
         await client.connect();
 
         const productsCollection = client.db('gadgetQuestDB').collection('productsCollection');
-        
-        app.get('/products', async(req, res)=>{
+        const usersCollection = client.db('gadgetQuestDB').collection('users');
+
+        app.get('/products', async (req, res) => {
             const cursor = await productsCollection.find().toArray();
             console.log(cursor.length)
             res.send(cursor)
         });
 
-        app.get('/products/:id', async(req, res)=>{
+        app.get('/products/:id', async (req, res) => {
             const id = req.params.id;
-            const query = { _id: new ObjectId(id)};
+            const query = { _id: new ObjectId(id) };
             const result = await productsCollection.findOne(query);
             res.send(result)
         })
 
+        app.patch('/products/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const product = await productsCollection.findOne(query);
+            const filter = { _id: new ObjectId(id) };
+            const review = req.body;
+            const addReview = product.reviews
+            addReview.push(review)
+            const updateDoc = {
+                $set: {
+                    reviews: addReview
+                }
+            }
+            const result = await productsCollection.updateOne(filter, updateDoc)
+            res.send(result)
+
+
+        });
+
+
+        app.patch('/products/vote/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const product = await productsCollection.findOne(query);
+            const vote = req.body.vote;
+            // console.log('id:', product.upvote + vote)
+            const addVote = product.upvote + vote
+            // console.log(vote, 12345)
+
+            if (vote === 1) {
+                const updateDoc = {
+                    $set: {
+                        upvote: addVote
+                    }
+                }
+                const result = await productsCollection.updateOne(query, updateDoc);
+                res.send(result);
+            }
+
+
+            if (vote === -1) {
+                const updateDoc = {
+                    $set: {
+                        downvote: product.downvote + 1
+                    }
+                }
+                const result = await productsCollection.updateOne(query, updateDoc);
+                res.send(result);
+            }
+        })
+
+
+
+
+
+
+
+        app.post('/users', async (req, res) => {
+            const doc = req.body;
+            const result = await usersCollection.insertOne(doc);
+            res.send(result)
+        })
 
 
 
