@@ -110,6 +110,21 @@ async function run() {
         })
 
 
+        app.post('/users-role/:id', async (req, res) => {
+            const id = req?.params?.id;
+            const userRole = req?.body?.role
+            const query = { _id: new ObjectId(id) };
+            const user = await usersCollection.findOne(query);
+            const updateDoc = {
+                $set: {
+                    role: userRole
+                }
+            }
+            const result = await usersCollection.updateOne(query, updateDoc);
+            res.send(result);
+        })
+
+
         app.get('/users', async (req, res) => {
             const result = await usersCollection.find().toArray();
             res.send(result)
@@ -117,17 +132,17 @@ async function run() {
         })
 
         app.get('/singleUser/:email', async (req, res) => {
-            const email =  req.params.email ;
-           console.log(email);
-           const query ={email:  req.params.email}
-           const result =await usersCollection.findOne(query)
-           console.log(result);
-           res.send(result)
+            const email = req.params.email;
+            console.log(email);
+            const query = { email: req.params.email }
+            const result = await usersCollection.findOne(query)
+            console.log(result);
+            res.send(result)
 
         })
 
 
-      
+
 
 
 
