@@ -32,12 +32,37 @@ async function run() {
 
         const productsCollection = client.db('gadgetQuestDB').collection('productsCollection');
         const usersCollection = client.db('gadgetQuestDB').collection('users');
+        const userPostCollection = client.db('gadgetQuestDB').collection('userPost');
+        const featuredCollection = client.db('gadgetQuestDB').collection('featuredProducts');
+        const trendingCollection = client.db('gadgetQuestDB').collection('trendingProducts');
 
         app.get('/products', async (req, res) => {
-            const cursor = await productsCollection.find().toArray();
-            console.log(cursor.length)
+            const pageNumber = parseFloat(req.query.currentPage);
+            const itemsPerPage = parseFloat(req.query.itemsPerPage)
+            const state = req.query.status
+
+            // console.log('the status of product:',state)
+            const query = {status: state}
+            // const result = await productsCollection.find(query).toArray()
+            // console.log(result.length,result)
+
+            const skip = itemsPerPage * pageNumber;
+            const limit = itemsPerPage;
+            const cursor = await productsCollection.find(query).skip(skip).limit(limit).toArray();
+           
             res.send(cursor)
         });
+
+
+
+        // total products count
+        app.get('/products-count', async (req, res) => {
+            const query = {status: 'approved'}
+            const findProducts = await productsCollection.find(query).toArray();
+            // console.log('the total products:', totalProduct);
+            const totalProduct = findProducts.length
+            res.send({ totalProduct })
+        })
 
         app.get('/products/:id', async (req, res) => {
             const id = req.params.id;
@@ -56,7 +81,8 @@ async function run() {
             addReview.push(review)
             const updateDoc = {
                 $set: {
-                    reviews: addReview
+                    reviews: addReview,
+                    
                 }
             }
             const result = await productsCollection.updateOne(filter, updateDoc)
@@ -64,6 +90,43 @@ async function run() {
 
 
         });
+
+
+        // moderator api 
+        app.patch('/products-approved/:id', async (req, res) => {
+            const id = req.params.id;
+            const state = req.query.status ;
+            console.log('the id for approved products:',id ,'and',state)
+            const filter = { _id: new ObjectId(id) };
+            const updateDoc = {
+                $set: {
+                    status: state,
+                    
+                }
+            }
+            const result = await productsCollection.updateOne(filter, updateDoc)
+            console.log(result)
+            res.send(result)
+
+
+        });
+
+        // deletion the rejects products
+
+        app.delete('/products-rejected/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await productsCollection.deleteOne(query)
+            console.log(result)
+            res.send({result})
+        });
+
+
+
+
+
+
+
 
 
         app.patch('/products/vote/:id', async (req, res) => {
@@ -133,14 +196,50 @@ async function run() {
 
         app.get('/singleUser/:email', async (req, res) => {
             const email = req.params.email;
-            console.log(email);
+            // console.log(email);
             const query = { email: req.params.email }
             const result = await usersCollection.findOne(query)
-            console.log(result);
+            // console.log(result);
             res.send(result)
 
         })
 
+        // user post for product api
+
+
+        app.post('/users-post/product', async (req, res) => {
+            try {
+                const product = req.body;
+                console.log('user post:', product)
+                const result = await productsCollection.insertOne(product);
+                res.send(result)
+            }
+            catch (err) {
+                console.log(err)
+            }
+        })
+
+        // featured products
+
+        app.get('/featured-products', async (req, res) => {
+            const result = await featuredCollection.find().toArray();
+            res.send(result)
+        })
+        
+        // trending products
+        
+        app.get('/trending-products', async (req, res) => {
+            const result = await trendingCollection.find().toArray();
+            res.send(result)
+        })
+
+
+        // moderator api 
+        app.get('/user-post-products',async(req, res)=>{
+            
+            const result = await productsCollection.find().toArray();
+            res.send(result)
+        })
 
 
 
