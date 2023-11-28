@@ -222,16 +222,21 @@ async function run() {
         app.patch('/featured-products/vote/:id', async (req, res) => {
             const id = req.params.id;
             const vote = parseFloat(req.body.vote);
+            const user = req.body.userInfo ;
             const query = { _id: new ObjectId(id) };
-            const product = await featuredCollection.findOne(query)
+            const product = await featuredCollection.findOne(query);
+            const addVoter = product.voter ;
+            addVoter.push(user)
+            console.log('handle vote for the featured product:',user, '&&&&& the',product.voter)
             const addVote = product.upvote + vote
-            const noVote = product.downvote + vote
+            
             // console.log(vote, 12345)
 
             if (vote === 1) {
                 const updateDoc = {
                     $set: {
-                        upvote: addVote
+                        upvote: addVote,
+                        voter: addVoter
                     }
                 }
                 const result = await featuredCollection.updateOne(query, updateDoc);
@@ -243,7 +248,8 @@ async function run() {
                 // console.log('down vote button is clicked', vote, 'and', product.downvote)
                 const updateDoc = {
                     $set: {
-                        downvote: product.downvote + 1
+                        downvote: product.downvote + 1,
+                        voter: addVoter
                     }
                 }
                 const result = await featuredCollection.updateOne(query, updateDoc);
