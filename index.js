@@ -255,7 +255,55 @@ async function run() {
                 const result = await featuredCollection.updateOne(query, updateDoc);
                 res.send(result);
             }
-        })
+        });
+
+
+        // vote for the trending products ;
+
+        app.patch('/trending-products/vote/:id', async (req, res) => {
+            const id = req.params.id;
+            const vote = parseFloat(req.body.vote);
+            const user = req.body.userInfo ;
+            const query = { _id: new ObjectId(id) };
+            const product = await trendingCollection.findOne(query);
+            const addVoter = product.voter ;
+            addVoter.push(user)
+            console.log('handle vote for the featured product:',user, '&&&&& the',product.voter)
+            const addVote = product.upvote + vote
+            if (vote === 1) {
+                const updateDoc = {
+                    $set: {
+                        upvote: addVote,
+                        voter: addVoter
+                    }
+                }
+                const result = await trendingCollection.updateOne(query, updateDoc);
+                res.send(result);
+            }
+
+            if (vote === -1) {
+                const updateDoc = {
+                    $set: {
+                        downvote: product.downvote + 1,
+                        voter: addVoter
+                    }
+                }
+                const result = await trendingCollection.updateOne(query, updateDoc);
+                res.send(result);
+            }
+        });
+
+
+
+
+
+
+
+
+
+
+
+
 
         // report a products ;
 
