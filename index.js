@@ -189,6 +189,7 @@ async function run() {
             const user = req.body.userInfo;
             const addVote = product.upvote + vote;
             const addVoter = product.voter;
+            console.log(product, 6000000)
             addVoter.push(user)
 
             if (vote === 1) {
@@ -389,7 +390,7 @@ async function run() {
         app.post('/users-post/product', async (req, res) => {
             try {
                 const product = req.body;
-                // console.log('user post:', product)
+                console.log('user post:', product)
                 const result = await productsCollection.insertOne(product);
                 res.send(result)
             }
