@@ -3,12 +3,12 @@ const app = express();
 require('dotenv').config();
 const cors = require('cors')
 const jwt = require('jsonwebtoken');
-
+const stripe =require('stripe').Stripe(process.env.STRIPE_SECRET_KEY)
 const port = process.env.PORT || 5000;
 
 
 //parser-middleware
-app.use(cors());
+app.use(cors({origin: ['https://gadget-quest.web.app','http://localhost:5173']}));
 app.use(express.json());
 
 // verify token ;
@@ -16,8 +16,7 @@ const verifyToken = (req, res, next) => {
     if (!req.headers.authorization) {
         return res.status(401).send({ message: 'Unauthorized' })
     }
-    // console.log('from the verify token', req.headers.authorization);
-    // console.log('the pure token is :', req.headers.authorization.split(' ')[1]);
+   
     const token = req.headers.authorization.split(' ')[1];
     jwt.verify(token, process.env.TOKEN_SECRET, (error, decoded) => {
         if (error) {
@@ -25,7 +24,7 @@ const verifyToken = (req, res, next) => {
         }
 
         req.decoded = decoded
-        // console.log('decoded from the :', decoded);
+        
         next();
 
     })
@@ -52,7 +51,7 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
-        await client.connect();
+        // await client.connect();
 
         const productsCollection = client.db('gadgetQuestDB').collection('productsCollection');
         const usersCollection = client.db('gadgetQuestDB').collection('users');
@@ -64,7 +63,7 @@ async function run() {
         // jwt token creating 
         app.post('/jwt', async (req, res) => {
             const user = req.body;
-            // console.log('the user for token creation',process.env.TOKEN_SECRET);
+           
             const token = jwt.sign(user, process.env.TOKEN_SECRET, { expiresIn: '1h' })
             res.send({ token })
 
@@ -77,33 +76,48 @@ async function run() {
             const pageNumber = parseFloat(req.query.currentPage);
             const itemsPerPage = parseFloat(req.query.itemsPerPage)
             const state = req.query.status
-            const searchText = req.query.search
-            const totalProduct = (await productsCollection.find().toArray()).length;
-            // console.log('the all products', totalProduct)
+            const searchText = req.query.search ;
+            let query = { status: state }
+            const totalProduct = (await productsCollection.find(query).toArray()).length;
+            
 
-            let query = {};
+            
             let totalCount = totalProduct;
             if (searchText) {
                 query = {
-                    tags: searchText
+                    status: state,
+                    tags: searchText,
                 }
                 const total = (await productsCollection.find(query).toArray()).length
                 totalCount = total
 
             }
 
-            else {
-
-                query = { status: state }
-                //    console.log('i am from the moderator dashboard')
-            }
-            // console.log(query)
+           
             const skip = itemsPerPage * pageNumber;
             const limit = itemsPerPage;
             const cursor = await productsCollection.find(query).skip(skip).limit(limit).toArray();
 
             res.send({ cursor, totalCount })
         });
+
+
+        // creating the payment intent ;
+        app.post('/create-payment-intent',async(req,res)=>{
+            const {price} =req.body ;
+            const amount = parseInt(price * 100);
+            
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount:amount,
+                currency: 'usd',
+                payment_method_types: [ "card"],
+            });
+            res.send({
+                clientSecret: paymentIntent.client_secret,
+              });
+                    
+                  
+        })
 
 
 
@@ -189,7 +203,7 @@ async function run() {
             const user = req.body.userInfo;
             const addVote = product.upvote + vote;
             const addVoter = product.voter;
-            console.log(product, 6000000)
+            // console.log(product, 6000000)
             addVoter.push(user)
 
             if (vote === 1) {
@@ -228,7 +242,7 @@ async function run() {
             const product = await featuredCollection.findOne(query);
             const addVoter = product.voter ;
             addVoter.push(user)
-            console.log('handle vote for the featured product:',user, '&&&&& the',product.voter)
+            // console.log('handle vote for the featured product:',user, '&&&&& the',product.voter)
             const addVote = product.upvote + vote
             
             // console.log(vote, 12345)
@@ -269,7 +283,7 @@ async function run() {
             const product = await trendingCollection.findOne(query);
             const addVoter = product.voter ;
             addVoter.push(user)
-            console.log('handle vote for the featured product:',user, '&&&&& the',product.voter)
+            // console.log('handle vote for the featured product:',user, '&&&&& the',product.voter)
             const addVote = product.upvote + vote
             if (vote === 1) {
                 const updateDoc = {
@@ -337,7 +351,7 @@ async function run() {
 
         app.post('/users', async (req, res) => {
             const doc = req.body;
-            console.log('the doc:',doc)
+            // console.log('the doc:',doc)
             const query = { email: doc.email }
             const existingUser = await usersCollection.findOne(query);
             if (existingUser) {
@@ -387,10 +401,10 @@ async function run() {
         // user post for product api
 
 
-        app.post('/users-post/product', async (req, res) => {
+        app.post('/users-post/product',verifyToken, async (req, res) => {
             try {
                 const product = req.body;
-                console.log('user post:', product)
+                // console.log('user post:', product)
                 const result = await productsCollection.insertOne(product);
                 res.send(result)
             }
@@ -420,7 +434,7 @@ async function run() {
                 // console.log('id for updating :',updateDoc) ;
                 // console.log('user post:', product)
                 const result = await productsCollection.updateOne(filter,updateDoc);
-                console.log('update Info:',result)
+                // console.log('update Info:',result)
                 res.send(result);
             }
             catch (err) {
@@ -533,7 +547,7 @@ async function run() {
 
 
         // Send a ping to confirm a successful connection
-        await client.db("admin").command({ ping: 1 });
+        // await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
