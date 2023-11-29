@@ -396,7 +396,43 @@ async function run() {
             catch (err) {
                 console.log(err)
             }
-        })
+        });
+
+        // update user posting product ;
+
+        app.patch('/users-post/product/:id', async (req, res) => {
+            try {
+                const product = req.body;
+                const id = req.params.id ;
+                const filter = {_id: new ObjectId(id)}
+                const updateDoc = {
+                    $set: {
+                        title: product.title,
+                        name:product.name,
+                        img:product.img,
+                        tags:product.tags,
+                        description:product.description,
+                        date: product.date,
+                        number: product.number
+                    }
+                }
+                // console.log('id for updating :',updateDoc) ;
+                // console.log('user post:', product)
+                const result = await productsCollection.updateOne(filter,updateDoc);
+                console.log('update Info:',result)
+                res.send(result);
+            }
+            catch (err) {
+                console.log(err)
+            }
+        });
+
+
+
+
+
+
+
 
         // featured products
 
