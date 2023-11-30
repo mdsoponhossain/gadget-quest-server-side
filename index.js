@@ -3,12 +3,12 @@ const app = express();
 require('dotenv').config();
 const cors = require('cors')
 const jwt = require('jsonwebtoken');
-const stripe =require('stripe').Stripe(process.env.STRIPE_SECRET_KEY)
+const stripe = require('stripe').Stripe(process.env.STRIPE_SECRET_KEY)
 const port = process.env.PORT || 5000;
 
 
 //parser-middleware
-app.use(cors({origin: ['https://gadget-quest.web.app','http://localhost:5173']}));
+app.use(cors({ origin: ['https://gadget-quest.web.app'] }));
 app.use(express.json());
 
 // verify token ;
@@ -16,19 +16,15 @@ const verifyToken = (req, res, next) => {
     if (!req.headers.authorization) {
         return res.status(401).send({ message: 'Unauthorized' })
     }
-   
+
     const token = req.headers.authorization.split(' ')[1];
     jwt.verify(token, process.env.TOKEN_SECRET, (error, decoded) => {
         if (error) {
             return res.status(403).send({ message: 'Forbidden' })
         }
-
-        req.decoded = decoded
-        
+        req.decoded = decoded;
         next();
-
     })
-
 }
 
 
@@ -63,7 +59,7 @@ async function run() {
         // jwt token creating 
         app.post('/jwt', async (req, res) => {
             const user = req.body;
-           
+
             const token = jwt.sign(user, process.env.TOKEN_SECRET, { expiresIn: '1h' })
             res.send({ token })
 
@@ -76,12 +72,12 @@ async function run() {
             const pageNumber = parseFloat(req.query.currentPage);
             const itemsPerPage = parseFloat(req.query.itemsPerPage)
             const state = req.query.status
-            const searchText = req.query.search ;
+            const searchText = req.query.search;
             let query = { status: state }
             const totalProduct = (await productsCollection.find(query).toArray()).length;
-            
 
-            
+
+
             let totalCount = totalProduct;
             if (searchText) {
                 query = {
@@ -93,7 +89,7 @@ async function run() {
 
             }
 
-           
+
             const skip = itemsPerPage * pageNumber;
             const limit = itemsPerPage;
             const cursor = await productsCollection.find(query).skip(skip).limit(limit).toArray();
@@ -103,20 +99,20 @@ async function run() {
 
 
         // creating the payment intent ;
-        app.post('/create-payment-intent',async(req,res)=>{
-            const {price} =req.body ;
+        app.post('/create-payment-intent', async (req, res) => {
+            const { price } = req.body;
             const amount = parseInt(price * 100);
-            
+
             const paymentIntent = await stripe.paymentIntents.create({
-                amount:amount,
+                amount: amount,
                 currency: 'usd',
-                payment_method_types: [ "card"],
+                payment_method_types: ["card"],
             });
             res.send({
                 clientSecret: paymentIntent.client_secret,
-              });
-                    
-                  
+            });
+
+
         })
 
 
@@ -139,7 +135,7 @@ async function run() {
 
         // my products api 
 
-        app.get('/myProducts/:email',verifyToken, async (req, res) => {
+        app.get('/myProducts/:email', verifyToken, async (req, res) => {
             const userEmail = req.params.email;
             const query = { uploader: userEmail }
             const result = await productsCollection.find(query).toArray();
@@ -150,7 +146,7 @@ async function run() {
 
 
 
-        app.patch('/products/:id',verifyToken, async (req, res) => {
+        app.patch('/products/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const product = await productsCollection.findOne(query);
@@ -158,9 +154,7 @@ async function run() {
             const review = req.body;
             const addReviewer = product.reviewer;
             addReviewer.push(review.email)
-            // console.log('review:', review)
-            // console.log('reviewer:', review.email)
-            // console.log('reviewer444:', product.reviewer)
+        
             const addReview = product.reviews
             addReview.push(review)
             const updateDoc = {
@@ -179,7 +173,7 @@ async function run() {
 
         // admin api ;
 
-        app.post('/add-coupon',verifyToken, async (req, res) => {
+        app.post('/add-coupon', verifyToken, async (req, res) => {
             const coupon = req.body;
             // console.log('the coupon:', coupon);
             const result = await couponCollection.insertOne(coupon)
@@ -193,9 +187,9 @@ async function run() {
 
 
 
-// all products from the productCollection ;
+        // all products from the productCollection ;
 
-        app.patch('/products/vote/:id',verifyToken, async (req, res) => {
+        app.patch('/products/vote/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const product = await productsCollection.findOne(query);
@@ -203,7 +197,7 @@ async function run() {
             const user = req.body.userInfo;
             const addVote = product.upvote + vote;
             const addVoter = product.voter;
-            // console.log(product, 6000000)
+            
             addVoter.push(user)
 
             if (vote === 1) {
@@ -227,7 +221,7 @@ async function run() {
                 }
                 const result = await productsCollection.updateOne(query, updateDoc);
                 res.send(result);
-                // console.log(vote, result, 12345)
+               
             }
         })
 
@@ -237,16 +231,13 @@ async function run() {
         app.patch('/featured-products/vote/:id', async (req, res) => {
             const id = req.params.id;
             const vote = parseFloat(req.body.vote);
-            const user = req.body.userInfo ;
+            const user = req.body.userInfo;
             const query = { _id: new ObjectId(id) };
             const product = await featuredCollection.findOne(query);
-            const addVoter = product.voter ;
+            const addVoter = product.voter;
             addVoter.push(user)
-            // console.log('handle vote for the featured product:',user, '&&&&& the',product.voter)
+         
             const addVote = product.upvote + vote
-            
-            // console.log(vote, 12345)
-
             if (vote === 1) {
                 const updateDoc = {
                     $set: {
@@ -257,10 +248,8 @@ async function run() {
                 const result = await featuredCollection.updateOne(query, updateDoc);
                 res.send(result);
             }
-
-
             if (vote === -1) {
-                // console.log('down vote button is clicked', vote, 'and', product.downvote)
+              
                 const updateDoc = {
                     $set: {
                         downvote: product.downvote + 1,
@@ -278,12 +267,11 @@ async function run() {
         app.patch('/trending-products/vote/:id', async (req, res) => {
             const id = req.params.id;
             const vote = parseFloat(req.body.vote);
-            const user = req.body.userInfo ;
+            const user = req.body.userInfo;
             const query = { _id: new ObjectId(id) };
             const product = await trendingCollection.findOne(query);
-            const addVoter = product.voter ;
+            const addVoter = product.voter;
             addVoter.push(user)
-            // console.log('handle vote for the featured product:',user, '&&&&& the',product.voter)
             const addVote = product.upvote + vote
             if (vote === 1) {
                 const updateDoc = {
@@ -329,7 +317,6 @@ async function run() {
             const product = await productsCollection.findOne(query);
             const reportInfo = product.reportedUser
             reportInfo.push(reporterInfo)
-            // console.log('reported user info:', reportInfo)
             const updateDoc = {
                 $set: {
                     reported: true,
@@ -341,6 +328,57 @@ async function run() {
             res.send(result);
 
 
+        });
+
+        //total user count & total products count;
+        app.get('/user-products-count',async(req, res)=>{
+            const totalUsers = await usersCollection.estimatedDocumentCount();
+            const totalproducts = await productsCollection.estimatedDocumentCount();
+            const totalFeatured = await featuredCollection.estimatedDocumentCount();
+            const totalTrending = await trendingCollection.estimatedDocumentCount();
+            res.send({totalUsers,totalproducts,totalFeatured,totalTrending})
+        })
+
+
+
+
+
+        //if user is payment done ;
+        app.patch('/update-user-paymentInfo/:email',verifyToken, async (req, res) => {
+            const email = req.params.email;
+            const transaction = req.body.transaction;
+            console.log(req.body, 'and email', email);
+            const filter = { email: email }
+            const post = req?.body?.post;
+
+            if (post) {
+
+                console.log(post, 1000)
+                const user = await usersCollection.findOne(filter);
+                console.log(222222,user)
+                const addPostinfo = user?.postInfo
+                console.log(addPostinfo,11111)
+                addPostinfo.push(post)
+                const updateDoc = {
+                    $set: {
+                        postInfo: addPostinfo
+                    }
+                };
+                const result = await usersCollection.updateOne(filter, updateDoc);
+                console.log(result);
+                res.send(result);
+                console.log(result)
+                return ;
+            }
+            const updateDoc = {
+                $set: {
+                    status: 'verified',
+                    transacId: transaction,
+                }
+            };
+            const result = await usersCollection.updateOne(filter, updateDoc);
+            console.log(result);
+            res.send(result)
         })
 
 
@@ -367,9 +405,9 @@ async function run() {
         })
 
         // admin api ;
-        app.post('/users-role/:id', verifyToken, async (req, res) => {
+        app.patch('/users-role/:id', verifyToken, async (req, res) => {
             const id = req?.params?.id;
-            const userRole = req?.body?.role
+            const userRole = req?.body?.role;
             const query = { _id: new ObjectId(id) };
             const user = await usersCollection.findOne(query);
             const updateDoc = {
@@ -382,13 +420,13 @@ async function run() {
         })
 
 
-        app.get('/users',verifyToken, async (req, res) => {
+        app.get('/users', verifyToken, async (req, res) => {
             const result = await usersCollection.find().toArray();
             res.send(result)
 
         })
 
-        app.get('/singleUser/:email',verifyToken, async (req, res) => {
+        app.get('/singleUser/:email', verifyToken, async (req, res) => {
             const email = req.params.email;
             // console.log(email);
             const query = { email: req.params.email }
@@ -401,10 +439,9 @@ async function run() {
         // user post for product api
 
 
-        app.post('/users-post/product',verifyToken, async (req, res) => {
+        app.post('/users-post/product', verifyToken, async (req, res) => {
             try {
                 const product = req.body;
-                // console.log('user post:', product)
                 const result = await productsCollection.insertOne(product);
                 res.send(result)
             }
@@ -418,23 +455,20 @@ async function run() {
         app.patch('/users-post/product/:id', async (req, res) => {
             try {
                 const product = req.body;
-                const id = req.params.id ;
-                const filter = {_id: new ObjectId(id)}
+                const id = req.params.id;
+                const filter = { _id: new ObjectId(id) }
                 const updateDoc = {
                     $set: {
                         title: product.title,
-                        name:product.name,
-                        img:product.img,
-                        tags:product.tags,
-                        description:product.description,
+                        name: product.name,
+                        img: product.img,
+                        tags: product.tags,
+                        description: product.description,
                         date: product.date,
                         number: product.number
                     }
                 }
-                // console.log('id for updating :',updateDoc) ;
-                // console.log('user post:', product)
-                const result = await productsCollection.updateOne(filter,updateDoc);
-                // console.log('update Info:',result)
+                const result = await productsCollection.updateOne(filter, updateDoc);
                 res.send(result);
             }
             catch (err) {
@@ -454,7 +488,6 @@ async function run() {
         app.get('/featured-products', async (req, res) => {
             const sortField = req.query.sortField;
             const sortOrder = parseFloat(req.query.sortOrder)
-            // console.log('The sortField:', sortField, 'and sortOrder:', sortOrder);
             let sortObj = {};
             if (sortField && sortOrder) {
                 sortObj[sortField] = sortOrder;
@@ -473,7 +506,7 @@ async function run() {
 
 
         // moderator api 
-        app.get('/user-post-products',verifyToken, async (req, res) => {
+        app.get('/user-post-products', verifyToken, async (req, res) => {
 
             const result = await productsCollection.find().toArray();
             res.send(result)
@@ -483,19 +516,21 @@ async function run() {
 
         app.post('/add-feature', verifyToken, async (req, res) => {
             const product = req.body;
-            if(product._id){
+        
+            if (product._id) {
+                const id = product._id;
                 delete product._id
+                product.id = id ;
             }
-            
+
             const result = await featuredCollection.insertOne(product);
             res.send(result)
         })
 
         // moderator api 
-        app.patch('/products-approved/:id',verifyToken, async (req, res) => {
+        app.patch('/products-approved/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
             const state = req.query.status;
-            // console.log('the id for approved products:', id, 'and', state)
             const filter = { _id: new ObjectId(id) };
             const updateDoc = {
                 $set: {
@@ -512,7 +547,7 @@ async function run() {
 
         // moderator api  deletion the rejects products
 
-        app.delete('/products-rejected/:id',verifyToken, async (req, res) => {
+        app.delete('/products-rejected/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await productsCollection.deleteOne(query)
@@ -522,7 +557,7 @@ async function run() {
 
         // medorator api : load all reported product ;
 
-        app.get('/load-reported-products',verifyToken, async (req, res) => {
+        app.get('/load-reported-products', verifyToken, async (req, res) => {
             const query = {
                 reported: true
             }
@@ -533,7 +568,7 @@ async function run() {
 
         // deleted all reported products
 
-        app.delete('/delete-reported-product/:id',verifyToken, async (req, res) => {
+        app.delete('/delete-reported-product/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
             const result = await productsCollection.deleteOne(query);
@@ -555,12 +590,6 @@ async function run() {
     }
 }
 run().catch(console.dir);
-
-
-
-
-
-
 
 
 
