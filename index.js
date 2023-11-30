@@ -2,6 +2,7 @@ const express = require('express');
 const app = express();
 require('dotenv').config();
 const cors = require('cors')
+const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const stripe = require('stripe').Stripe(process.env.STRIPE_SECRET_KEY)
 const port = process.env.PORT || 5000;
@@ -33,7 +34,14 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 // const uri = "mongodb+srv://<username>:<password>@cluster0.yfrjdbj.mongodb.net/?retryWrites=true&w=majority";
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.yfrjdbj.mongodb.net/?retryWrites=true&w=majority`;
-console.log(uri)
+console.log(uri);
+
+
+mongoose.connect(uri)
+.then(()=>console.log('mongoose database is successfully connected'))
+.catch((error)=>console.log(`mongoose got an server side error:${error}`))
+
+
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
